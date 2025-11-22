@@ -1,0 +1,7 @@
+log:
+  output: "file"
+  file_path: "server.log"
+  max_size: 10 # MB
+  max_backups: 3
+  max_age: 28 # days
+  compress: true

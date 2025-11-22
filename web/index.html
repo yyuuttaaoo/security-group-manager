@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Group Manager</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #475569;
+            background-color: #334155;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            ring: 2px solid var(--accent-color);
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .logs {
+            margin-top: 1.5rem;
+            background-color: #0f172a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.875rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #334155;
+        }
+        .hidden {
+            display: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Security Group Manager</h1>
+        <div class="form-group">
+            <label for="ip">Current IP Address</label>
+            <input type="text" id="ip" placeholder="Loading IP..." />
+        </div>
+        <button id="submitBtn" onclick="submitUpdate()">Update Rules</button>
+        
+        <div id="logsContainer" class="logs hidden">
+            <div id="logsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const ipInput = document.getElementById('ip');
+        const submitBtn = document.getElementById('submitBtn');
+        const logsContainer = document.getElementById('logsContainer');
+        const logsContent = document.getElementById('logsContent');
+
+        // Fetch IP on load
+        async function fetchIP() {
+            try {
+                const res = await fetch('/api/ip');
+                const data = await res.json();
+                if (data.ip) {
+                    ipInput.value = data.ip;
+                    
+                    // Display Geo Info if available
+                    if (data.city || data.region || data.country_name || data.org) {
+                        const geoInfo = [data.city, data.region, data.country_name, data.org].filter(Boolean).join(', ');
+                        const infoDiv = document.createElement('div');
+                        infoDiv.style.marginTop = '0.5rem';
+                        infoDiv.style.fontSize = '0.875rem';
+                        infoDiv.style.color = '#94a3b8';
+                        infoDiv.textContent = `Detected: ${geoInfo}`;
+                        ipInput.parentNode.appendChild(infoDiv);
+                    }
+                } else {
+                    ipInput.placeholder = "Failed to load IP";
+                }
+            } catch (err) {
+                console.error(err);
+                ipInput.placeholder = "Failed to load IP";
+            }
+        }
+
+        fetchIP();
+
+        async function submitUpdate() {
+            const ip = ipInput.value;
+            if (!ip) {
+                alert("Please enter an IP address");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading"></div> Updating...';
+            logsContainer.classList.remove('hidden');
+            logsContent.textContent = "Starting update process...\n";
+
+            try {
+                const res = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ip })
+                });
+
+                const data = await res.json();
+                
+                if (data.logs) {
+                    logsContent.textContent += data.logs;
+                }
+                
+                if (data.success) {
+                    logsContent.textContent += "\n\nUpdate completed successfully!";
+                } else {
+                    logsContent.textContent += "\n\nUpdate failed or had errors. Check logs above.";
+                }
+
+            } catch (err) {
+                logsContent.textContent += `\nError: ${err.message}`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Update Rules";
+            }
+        }
+    </script>
+</body>
+</html>
