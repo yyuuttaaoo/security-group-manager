@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -37,4 +38,27 @@ func GetCurrentIP() (string, error) {
 	}
 
 	return "", fmt.Errorf("无法从响应中解析IP地址")
+}
+
+// ValidateIP checks if the input is a valid IP or CIDR.
+// If it's a CIDR, it ensures the prefix length is >= 22.
+func ValidateIP(input string) error {
+	// Check if it's a simple IP
+	if ip := net.ParseIP(input); ip != nil {
+		return nil
+	}
+
+	// Check if it's a CIDR
+	_, ipNet, err := net.ParseCIDR(input)
+	if err != nil {
+		return fmt.Errorf("invalid IP or CIDR format: %v", err)
+	}
+
+	// Check prefix length
+	ones, _ := ipNet.Mask.Size()
+	if ones < 22 {
+		return fmt.Errorf("CIDR prefix length must be >= 22, got /%d", ones)
+	}
+
+	return nil
 }

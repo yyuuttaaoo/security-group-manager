@@ -35,8 +35,16 @@ func _main(args []*string) (_err error) {
 
 	regions := []string{"cn-hongkong", "ap-northeast-1", "us-west-1"}
 
+	// Parse flags
+	groupName := "default"
+	if len(args) > 0 && *args[0] == "-group" {
+		if len(args) > 1 {
+			groupName = *args[1]
+		}
+	}
+
 	for _, region := range regions {
-		slog.Info("Processing Region", "region", region)
+		slog.Info("Processing Region", "region", region, "group", groupName)
 
 		// For demo, we still output to stdout (which is what logger.LogWriter is by default, or file)
 		// But ProcessRegion writes to the writer.
@@ -49,7 +57,7 @@ func _main(args []*string) (_err error) {
 		// slog.Default() writes to stdout/stderr usually, but we want to respect config.
 		// logger.Setup sets the default logger, so slog.Default() should be correct IF logger.Setup was called.
 		// Yes, logger.Setup is called above.
-		err := manager.ProcessRegion(region, currentIP, slog.Default())
+		err := manager.ProcessRegion(region, currentIP, groupName, slog.Default())
 
 		if err != nil {
 			// Log error but continue to next region

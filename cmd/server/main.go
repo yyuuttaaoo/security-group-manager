@@ -11,13 +11,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/yyuuttaaoo/security-group-manager/pkg/auth"
 	"github.com/yyuuttaaoo/security-group-manager/pkg/config"
 	"github.com/yyuuttaaoo/security-group-manager/pkg/logger"
 	"github.com/yyuuttaaoo/security-group-manager/pkg/manager"
+	"github.com/yyuuttaaoo/security-group-manager/pkg/utils"
 )
 
+var authenticator *auth.Authenticator
+
 type UpdateRequest struct {
-	IP string `json:"ip"`
+	IP    string `json:"ip"`
+	Group string `json:"group"`
 }
 
 type UpdateResponse struct {
@@ -26,11 +31,69 @@ type UpdateResponse struct {
 	Logs    string `json:"logs"`
 }
 
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+type UserInfoResponse struct {
+	Username string   `json:"username"`
+	Groups   []string `json:"groups"`
+}
+
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	user, err := authenticator.Login(req.Username, req.Password)
+	if err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	authenticator.SetSession(w, user)
+	json.NewEncoder(w).Encode(LoginResponse{Success: true, Message: "Logged in"})
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	authenticator.ClearSession(w)
+	json.NewEncoder(w).Encode(LoginResponse{Success: true, Message: "Logged out"})
+}
+
+func handleUserInfo(w http.ResponseWriter, r *http.Request) {
+	user, err := authenticator.GetUserFromRequest(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	json.NewEncoder(w).Encode(UserInfoResponse{
+		Username: user.Username,
+		Groups:   user.Groups,
+	})
+}
+
 func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Check permission
+	user := r.Context().Value(auth.UserContextKey).(*auth.User)
 
 	var req UpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -43,7 +106,23 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Received update request", "ip", req.IP)
+	if err := utils.ValidateIP(req.IP); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid IP: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	groupName := req.Group
+	if groupName == "" {
+		groupName = "default"
+	}
+
+	// Verify group access
+	if !authenticator.HasGroupAccess(user, groupName) {
+		http.Error(w, fmt.Sprintf("You do not have permission to modify group '%s'", groupName), http.StatusForbidden)
+		return
+	}
+
+	slog.Info("Received update request", "ip", req.IP, "group", groupName, "user", user.Username)
 
 	var logBuffer bytes.Buffer
 	regions := []string{"cn-hongkong", "ap-northeast-1", "us-west-1"}
@@ -58,9 +137,9 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	var errOccurred bool
 	for _, region := range regions {
-		reqLogger.Info("Processing Region", "region", region)
+		reqLogger.Info("Processing Region", "region", region, "group", groupName)
 
-		err := manager.ProcessRegion(region, req.IP, reqLogger)
+		err := manager.ProcessRegion(region, req.IP, groupName, reqLogger)
 		if err != nil {
 			reqLogger.Error("Error processing region", "region", region, "error", err)
 			errOccurred = true
@@ -152,21 +231,45 @@ func main() {
 	logger.Setup(cfg.Log)
 	slog.Info("Starting server...", "config", cfg)
 
+	// Init Authenticator
+	authenticator = auth.NewAuthenticator(cfg.Auth)
+
 	// Serve static files from the "web" directory
 	fs := http.FileServer(http.Dir("web"))
 	http.Handle("/", fs)
 
-	http.HandleFunc("/api/update", handleUpdate)
+	// Auth endpoints
+	http.HandleFunc("/api/login", handleLogin) // Login cannot require CSRF token as it establishes the session
+	http.HandleFunc("/api/logout", authenticator.CSRFMiddleware(handleLogout))
+	http.HandleFunc("/api/user/info", handleUserInfo)
+
+	// Protected endpoints
+	http.HandleFunc("/api/update", authenticator.CSRFMiddleware(authenticator.Middleware(handleUpdate)))
+
+	// Public endpoints
 	http.HandleFunc("/api/ip", handleGetIP)
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		if cfg.Server.Port != "" {
+			port = cfg.Server.Port
+		} else {
+			port = "8080"
+		}
 	}
 
-	slog.Info("Server listening", "port", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		slog.Error("Server failed", "error", err)
-		os.Exit(1)
+	addr := cfg.Server.Address + ":" + port
+	slog.Info("Server listening", "address", addr, "tls", cfg.Server.TLS)
+
+	if cfg.Server.TLS {
+		if err := http.ListenAndServeTLS(addr, cfg.Server.CertFile, cfg.Server.KeyFile, nil); err != nil {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := http.ListenAndServe(addr, nil); err != nil {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
+		}
 	}
 }

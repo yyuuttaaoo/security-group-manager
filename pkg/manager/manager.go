@@ -208,11 +208,14 @@ func PrintSwasRuleSummary(logger *slog.Logger, rule *swas.ListFirewallRulesRespo
 	)
 }
 
-func ProcessRegion(regionId string, currentIP string, logger *slog.Logger) error {
+func ProcessRegion(regionId string, currentIP string, groupName string, logger *slog.Logger) error {
 	sgm, err := NewSecurityGroupManager(regionId)
 	if err != nil {
 		return err
 	}
+
+	// Construct the prefix for auto-managed rules
+	autoManagePrefix := fmt.Sprintf("auto-manage-%s-", groupName)
 
 	securityGroupsResp, err := sgm.GetSecurityGroups()
 	if err != nil {
@@ -227,7 +230,7 @@ func ProcessRegion(regionId string, currentIP string, logger *slog.Logger) error
 		}
 
 		for _, permissionRule := range securityGroupRules.GetPermissions().GetPermission() {
-			if strings.HasPrefix(tea.StringValue(permissionRule.Description), "auto-manage-") {
+			if strings.HasPrefix(tea.StringValue(permissionRule.Description), autoManagePrefix) {
 				if tea.StringValue(permissionRule.SourceCidrIp) != currentIP {
 					logger.Info("Updating permission rule", "region", regionId, "securityGroupId", *securityGroup.GetSecurityGroupId())
 					errUpdate := sgm.UpdateSecurityGroupRuleSourceCidrIp(*securityGroup.GetSecurityGroupId(), *permissionRule.GetSecurityGroupRuleId(), currentIP)
@@ -260,7 +263,7 @@ func ProcessRegion(regionId string, currentIP string, logger *slog.Logger) error
 				}
 
 				for _, rule := range rules {
-					if strings.HasPrefix(tea.StringValue(rule.Remark), "auto-manage-") {
+					if strings.HasPrefix(tea.StringValue(rule.Remark), autoManagePrefix) {
 						if tea.StringValue(rule.SourceCidrIp) != currentIP {
 							logger.Info("Updating SWAS firewall rule", "region", regionId, "instanceId", tea.StringValue(instance.InstanceId))
 							errUpdate := swasMgr.ModifyFirewallRule(
