@@ -5,3 +5,17 @@ log:
   max_backups: 3
   max_age: 28 # days
   compress: true
+auth:
+  enabled: true
+  session_secret: "you_session_secret"
+  cookie_secure: true # Set to true if using HTTPS (or behind HTTPS proxy)
+  users:
+    - username: "admin"
+      password: "YWRtaW4K"
+      groups: ["home"]
+server:
+  address: "127.0.0.1" # Listen only on localhost (good for Caddy/Nginx)
+  port: "8080"
+  tls: false # Set to true if you want direct HTTPS
+  cert_file: "server.crt"
+  key_file: "server.key"
