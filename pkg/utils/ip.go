@@ -40,9 +40,9 @@ func GetCurrentIP() (string, error) {
 	return "", fmt.Errorf("无法从响应中解析IP地址")
 }
 
-// ValidateIP checks if the input is a valid IP or CIDR.
+// ValidateIPOrCIDR checks if the input is a valid IP or CIDR.
 // If it's a CIDR, it ensures the prefix length is >= 22.
-func ValidateIP(input string) error {
+func ValidateIPOrCIDR(input string) error {
 	// Check if it's a simple IP
 	if ip := net.ParseIP(input); ip != nil {
 		return nil

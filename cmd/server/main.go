@@ -106,7 +106,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.ValidateIP(req.IP); err != nil {
+	if err := utils.ValidateIPOrCIDR(req.IP); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid IP: %v", err), http.StatusBadRequest)
 		return
 	}
