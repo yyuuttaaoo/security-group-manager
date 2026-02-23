@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,7 +15,11 @@ import (
 	"github.com/yyuuttaaoo/security-group-manager/pkg/utils"
 )
 
-func _main(args []*string) (_err error) {
+func _main() (_err error) {
+	// Parse command-line flags
+	groupName := flag.String("group", "shenjin", "Group name for auto-manage prefix")
+	flag.Parse()
+
 	// Load configuration
 	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
@@ -33,18 +38,13 @@ func _main(args []*string) (_err error) {
 		return _err
 	}
 
+	// Always log the current IP prominently
+	slog.Info("Current IP detected", "ip", currentIP)
+
 	regions := []string{"cn-hongkong", "ap-northeast-1", "us-west-1"}
 
-	// Parse flags
-	groupName := "default"
-	if len(args) > 0 && *args[0] == "-group" {
-		if len(args) > 1 {
-			groupName = *args[1]
-		}
-	}
-
 	for _, region := range regions {
-		slog.Info("Processing Region", "region", region, "group", groupName)
+		slog.Info("Processing Region", "region", region, "group", *groupName)
 
 		// For demo, we still output to stdout (which is what logger.LogWriter is by default, or file)
 		// But ProcessRegion writes to the writer.
@@ -57,7 +57,7 @@ func _main(args []*string) (_err error) {
 		// slog.Default() writes to stdout/stderr usually, but we want to respect config.
 		// logger.Setup sets the default logger, so slog.Default() should be correct IF logger.Setup was called.
 		// Yes, logger.Setup is called above.
-		err := manager.ProcessRegion(region, currentIP, groupName, slog.Default())
+		err := manager.ProcessRegion(region, currentIP, *groupName, slog.Default())
 
 		if err != nil {
 			// Log error but continue to next region
@@ -83,7 +83,7 @@ func _main(args []*string) (_err error) {
 }
 
 func main() {
-	err := _main(tea.StringSlice(os.Args[1:]))
+	err := _main()
 	if err != nil {
 		panic(err)
 	}
