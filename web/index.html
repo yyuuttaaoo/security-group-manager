@@ -314,21 +314,37 @@
             logsContent.textContent = "Starting update process...\n";
 
             try {
+                const csrfToken = getCookie('sgm_csrf') || '';
+                if (!csrfToken) {
+                    logsContent.textContent += "\nError: Session expired, please refresh the page and login again.";
+                    return;
+                }
+
                 const res = await fetch('/api/update', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-Token': getCookie('sgm_csrf') || ''
+                        'X-CSRF-Token': csrfToken
                     },
                     body: JSON.stringify({ ip, group })
                 });
 
-                const data = await res.json();
-                
+                let data;
+                try {
+                    data = await res.json();
+                } catch (_) {
+                    if (res.status === 401 || res.status === 403) {
+                        logsContent.textContent += "\nError: Session expired, please refresh the page and login again.";
+                    } else {
+                        logsContent.textContent += `\nError: Unexpected server response (HTTP ${res.status})`;
+                    }
+                    return;
+                }
+
                 if (data.logs) {
                     logsContent.textContent += data.logs;
                 }
-                
+
                 if (data.success) {
                     logsContent.textContent += "\n\nUpdate completed successfully!";
                 } else {
