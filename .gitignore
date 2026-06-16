@@ -28,10 +28,12 @@ go.work.sum
 .env
 
 # Runtime/local recovery artifacts
+.DS_Store
 config.yaml
 server.log
 cert/
 bin/
+docs/deploy_local.md
 /main
 
 # Vendored SDK dumps used only as local recovery material
