@@ -1,0 +1,37 @@
+log:
+  output: "file"
+  file_path: "server.log"
+  max_size: 10
+  max_backups: 3
+  max_age: 28
+  compress: true
+auth:
+  enabled: true
+  # Must be non-placeholder and at least 32 characters. Example generator:
+  # openssl rand -hex 32
+  session_secret: "CHANGE_ME_RANDOM_32_CHARS_OR_MORE"
+  cookie_secure: true
+  users:
+    - uid: "admin"
+      alipay_userid: "YOUR_ALIPAY_USER_ID"
+      baidu_openid: "YOUR_BAIDU_OPENID"
+      groups: ["home"]
+alipay:
+  app_id: "YOUR_ALIPAY_APP_ID"
+  private_key_path: "cert/app_private_key.txt"
+  app_cert_path: "cert/app_cert.crt"
+  alipay_public_cert_path: "cert/alipay_cert.crt"
+  alipay_root_cert_path: "cert/alipay_root_cert.crt"
+  redirect_uri: "https://your-domain.example/api/oauth/alipay/callback"
+baidu:
+  app_id: "YOUR_BAIDU_APP_ID"
+  app_key: "YOUR_BAIDU_APP_KEY"
+  secret_key: "YOUR_BAIDU_SECRET_KEY"
+  redirect_uri: "https://your-domain.example/api/oauth/baidu/callback"
+server:
+  address: "127.0.0.1"
+  port: "8080"
+  tls: false
+  cert_file: "server.crt"
+  key_file: "server.key"
+  dev_mode: false

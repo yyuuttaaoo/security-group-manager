@@ -10,7 +10,7 @@
   - Targets Security Groups/Instances with tag `auto-manage: true`.
   - Targets Rules with description/remark prefix `auto-manage-{group}-`.
 - **Authentication & Authorization**:
-  - **Login System**: Username/Password authentication (stored in config).
+  - **Login System**: Alipay and Baidu OAuth login with provider IDs mapped in config.
   - **ACL**: Users are restricted to specific groups (e.g., `shenjin`, `iphone17pro`).
   - **Session Management**: Secure cookie-based sessions with HMAC signing.
 - **Security**:
@@ -32,12 +32,14 @@
 - `pkg/config`: Configuration loading logic.
 - `pkg/logger`: Logging configuration and setup.
 - `pkg/utils`: Utility functions (IP validation, getting current IP).
+- `pkg/alipay`: Native Alipay OAuth client, signing, and certificate helpers.
+- `pkg/baidu`: Baidu OAuth client.
 - `web`: Static frontend files (HTML/JS/CSS).
 
 ### Core Components
 - **SecurityGroupManager** (`pkg/manager/manager.go`): Wraps the Alibaba Cloud ECS SDK to manage Security Groups.
 - **SWASManager** (`pkg/manager/manager.go`): Wraps the Alibaba Cloud SWAS SDK to manage Lightweight Application Server firewalls.
-- **Authenticator** (`pkg/auth/auth.go`): Handles user login, session cookie management (HMAC signed), and CSRF token generation/validation.
+- **Authenticator** (`pkg/auth/auth.go`): Handles provider identity mapping, session cookie management (HMAC signed), and CSRF token generation/validation.
 - **ProcessRegion** (`pkg/manager/manager.go`): The main orchestration function. It iterates through configured regions, finds resources with the `auto-manage` tag, and updates rules matching the `auto-manage-{group}-` prefix.
 
 ## Configuration
@@ -54,12 +56,27 @@ log:
 
 auth:
   enabled: true
-  session_secret: "YOUR_RANDOM_SECRET" # Must be strong
+  session_secret: "YOUR_RANDOM_SECRET_32_CHARS_OR_MORE" # Must be non-placeholder and at least 32 characters
   cookie_secure: true # Set to false for local HTTP testing
   users:
-    - username: "admin"
-      password: "BASE64_ENCODED_PASSWORD"
+    - uid: "admin"
+      alipay_userid: "YOUR_ALIPAY_USER_ID"
+      baidu_openid: "YOUR_BAIDU_OPENID"
       groups: ["default", "admin"]
+
+alipay:
+  app_id: "YOUR_ALIPAY_APP_ID"
+  private_key_path: "cert/app_private_key.txt"
+  app_cert_path: "cert/app_cert.crt"
+  alipay_public_cert_path: "cert/alipay_cert.crt"
+  alipay_root_cert_path: "cert/alipay_root_cert.crt"
+  redirect_uri: "https://your-domain.example/api/oauth/alipay/callback"
+
+baidu:
+  app_id: "YOUR_BAIDU_APP_ID"
+  app_key: "YOUR_BAIDU_APP_KEY"
+  secret_key: "YOUR_BAIDU_SECRET_KEY"
+  redirect_uri: "https://your-domain.example/api/oauth/baidu/callback"
 
 server:
   address: "127.0.0.1" # Listen address (e.g., 0.0.0.0 for public)
@@ -69,13 +86,22 @@ server:
   key_file: "server.key"
 ```
 
+Generate a production `auth.session_secret` with a cryptographically random value, for example:
+
+```bash
+openssl rand -hex 32
+```
+
 ## API Endpoints
 
 ### Public
 - `GET /api/ip`: Returns the caller's public IP and Geo info.
 
 ### Authenticated
-- `POST /api/login`: Logs in a user.
+- `GET /api/oauth/alipay/login`: Starts Alipay OAuth login.
+- `GET|POST /api/oauth/alipay/callback`: Completes Alipay OAuth login.
+- `GET /api/oauth/baidu/login`: Starts Baidu OAuth login.
+- `GET /api/oauth/baidu/callback`: Completes Baidu OAuth login.
 - `POST /api/logout`: Logs out a user (Requires CSRF).
 - `GET /api/user/info`: Returns current user info and allowed groups.
 - `POST /api/update`: Triggers rule update for a specific group (Requires CSRF + Auth).
@@ -106,6 +132,5 @@ go build -o bin/demo cmd/demo/main.go
 See `deploy.md` for detailed deployment instructions, including Caddy reverse proxy setup.
 
 ## Future Improvements
-- **OAuth2 Integration**: Replace local password storage with third-party auth (Alipay/GitHub).
 - **Database**: Move user/group config to a database for dynamic management.
 - **Concurrency**: Process regions in parallel.
