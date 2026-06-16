@@ -56,7 +56,7 @@ log:
 
 auth:
   enabled: true
-  session_secret: "YOUR_RANDOM_SECRET" # Must be strong
+  session_secret: "YOUR_RANDOM_SECRET_32_CHARS_OR_MORE" # Must be non-placeholder and at least 32 characters
   cookie_secure: true # Set to false for local HTTP testing
   users:
     - uid: "admin"
@@ -84,6 +84,12 @@ server:
   tls: false # Enable built-in HTTPS
   cert_file: "server.crt"
   key_file: "server.key"
+```
+
+Generate a production `auth.session_secret` with a cryptographically random value, for example:
+
+```bash
+openssl rand -hex 32
 ```
 
 ## API Endpoints

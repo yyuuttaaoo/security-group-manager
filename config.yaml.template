@@ -7,7 +7,9 @@ log:
   compress: true
 auth:
   enabled: true
-  session_secret: "CHANGE_ME_RANDOM_32_BYTES_OR_MORE"
+  # Must be non-placeholder and at least 32 characters. Example generator:
+  # openssl rand -hex 32
+  session_secret: "CHANGE_ME_RANDOM_32_CHARS_OR_MORE"
   cookie_secure: true
   users:
     - uid: "admin"

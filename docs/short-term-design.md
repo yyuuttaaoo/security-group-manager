@@ -12,7 +12,7 @@ Add a `users` section to define access control.
 ```yaml
 auth:
   enabled: true
-  session_secret: "CHANGE_ME_RANDOM_32_BYTES_OR_MORE"
+  session_secret: "CHANGE_ME_RANDOM_32_CHARS_OR_MORE"
   users:
     - username: "example-user"
       password: "BASE64_ENCODED_PLACEHOLDER"

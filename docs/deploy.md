@@ -52,6 +52,8 @@ scp -C bin/server-linux <YOUR_USER>@<YOUR_SERVER_IP>:/tmp/server
 scp -C web/index.html <YOUR_USER>@<YOUR_SERVER_IP>:/tmp/index.html
 # First deploy only: create a private config from config.yaml.template, fill real secrets locally,
 # then upload that private config. Do not commit it.
+# auth.session_secret must be non-placeholder and at least 32 characters.
+# Example: openssl rand -hex 32
 scp -C config.yaml <YOUR_USER>@<YOUR_SERVER_IP>:/tmp/config.yaml
 
 # Move into place and fix permissions in one SSH session:
