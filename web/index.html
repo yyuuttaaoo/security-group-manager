@@ -11,11 +11,10 @@
             --text-color: #e2e8f0;
             --accent-color: #3b82f6;
             --accent-hover: #2563eb;
-            --success-color: #10b981;
             --error-color: #ef4444;
         }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
@@ -27,10 +26,11 @@
         .container {
             background-color: var(--card-bg);
             padding: 2rem;
-            border-radius: 1rem;
+            border-radius: 0.75rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             width: 100%;
             max-width: 600px;
+            box-sizing: border-box;
         }
         h1 {
             margin-top: 0;
@@ -47,7 +47,7 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
-        input[type="text"] {
+        input[type="text"], select {
             width: 100%;
             padding: 0.75rem;
             border-radius: 0.5rem;
@@ -57,10 +57,9 @@
             font-size: 1rem;
             box-sizing: border-box;
         }
-        input[type="text"]:focus {
+        input[type="text"]:focus, select:focus {
             outline: none;
             border-color: var(--accent-color);
-            ring: 2px solid var(--accent-color);
         }
         button {
             width: 100%;
@@ -81,12 +80,23 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .oauth-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        .oauth-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
         .logs {
             margin-top: 1.5rem;
             background-color: #0f172a;
             padding: 1rem;
             border-radius: 0.5rem;
-            font-family: monospace;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             white-space: pre-wrap;
             font-size: 0.875rem;
             max-height: 300px;
@@ -106,186 +116,178 @@
             animation: spin 1s ease-in-out infinite;
             margin-right: 0.5rem;
         }
+        .refresh-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: 0.25rem;
+        }
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        @media (max-width: 640px) {
+            body {
+                align-items: stretch;
+            }
+            .container {
+                min-height: 100vh;
+                border-radius: 0;
+            }
+            .oauth-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Security Group Manager</h1>
-        <!-- Login View -->
-        <div id="loginView" class="hidden">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" placeholder="Enter username" />
+
+        <div id="loginView" class="hidden" style="text-align: center;">
+            <p style="margin-bottom: 2rem; color: #94a3b8;">Please login via your preferred provider to manage security group rules.</p>
+            <div class="oauth-buttons">
+                <button id="alipayLoginBtn" class="oauth-button" onclick="window.location.href='/api/oauth/alipay/login'" style="background-color: #1677ff;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20.246 16.035c-.946-.621-2.029-.97-3.134-1.1-1.096-.129-1.996-1.127-1.996-2.228V7.086c0-1.488-.934-2.825-2.34-3.344-2.315-.853-4.885.1-6.104 2.193-1.22 2.094-.65 4.887 1.348 6.375.318.236.758.552 1.346.904a4.113 4.113 0 011.605 2.186 4.117 4.117 0 01-.064 2.658c-.694 1.849-2.016 3.328-3.793 4.238-.996.51-2.126.685-3.235.637-.181-.008-.328.14-.328.322v1.73c0 .185.156.331.341.32.998-.06 1.983-.346 2.879-.834 2.378-1.299 3.961-3.666 4.197-6.388a1.322 1.322 0 00-.737-1.298c-1.397-.686-2.613-1.636-3.551-2.774-.954-1.157-1.558-2.602-1.748-4.184C4.78 6.4 6.703 3.473 10.038 2.684c3.414-.808 6.946.924 8.283 4.118a7.222 7.222 0 01.378 4.298 1.481 1.481 0 00.957 1.832c1.472.482 2.768 1.34 3.791 2.441.123.133.19.314.168.498l-.208 1.708a.332.332 0 01-.52.222l-.641-.422zM12.981 14.77h-1.02a.332.332 0 01-.331-.332v-1.14c0-.184.15-.333.333-.333h1.018c.184 0 .332.149.332.333v1.14a.332.332 0 01-.332.332z" fill="white" />
+                    </svg>
+                    Alipay Login
+                </button>
+                <button id="baiduLoginBtn" class="oauth-button" onclick="window.location.href='/api/oauth/baidu/login'" style="background-color: #2932e1;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.6 15.6c-4.22 0-3.6-3.79-3.6-5.46 0-1.69-.53-5.44 3.6-5.44 4.04 0 3.74 3.75 3.74 5.44 0 1.67.6 5.46-3.74 5.46z" fill="white" />
+                        <circle cx="13.6" cy="12.14" r="1.5" fill="#2932e1" />
+                    </svg>
+                    Baidu Login
+                </button>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter password"
-                    style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #475569; background-color: #334155; color: white; font-size: 1rem; box-sizing: border-box;" />
-            </div>
-            <button id="loginBtn" onclick="handleLogin()">Login</button>
             <div id="loginError" style="color: var(--error-color); margin-top: 1rem; display: none;"></div>
         </div>
-        
-        <!-- Main View -->
+
         <div id="mainView" class="hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <span id="welcomeMsg" style="font-size: 0.875rem; color: #94a3b8;"></span>
-                <button onclick="handleLogout()"
-                    style="width: auto; padding: 0.5rem 1rem; font-size: 0.875rem; background-color: #ef4444;">Logout</button>
+                <button onclick="handleLogout()" style="width: auto; padding: 0.5rem 1rem; font-size: 0.875rem; background-color: #ef4444;">Logout</button>
+            </div>
+
+            <div class="form-group" style="position: relative;">
+                <label for="ip">Current IP Address</label>
+                <div style="position: relative;">
+                    <input type="text" id="ip" placeholder="Loading IP..." style="padding-right: 40px;" />
+                    <button type="button" onclick="fetchIPFromDirectService()" class="refresh-btn" title="Refresh IP">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 2v6h-6"></path>
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="geoInfoContainer" style="margin-top: 0.5rem; font-size: 0.875rem; color: #94a3b8; display: none;"></div>
             </div>
 
             <div class="form-group">
-                <label for="ip">Current IP Address</label>
-                <input type="text" id="ip" placeholder="Loading IP..." />
-            </div>
-            <div class="form-group">
                 <label for="group">Group Name</label>
-                <select id="group"
-                    style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #475569; background-color: #334155; color: white; font-size: 1rem; box-sizing: border-box;">
+                <select id="group">
                     <option value="" disabled selected>Select a group</option>
                 </select>
             </div>
             <button id="submitBtn" onclick="submitUpdate()">Update Rules</button>
-            
+
             <div id="logsContainer" class="logs hidden">
                 <div id="logsContent"></div>
             </div>
-            </div>
+        </div>
     </div>
 
     <script>
-                const loginView = document.getElementById('loginView');
-                const mainView = document.getElementById('mainView');
-                const usernameInput = document.getElementById('username');
-                const passwordInput = document.getElementById('password');
-                const loginError = document.getElementById('loginError');
-                const welcomeMsg = document.getElementById('welcomeMsg');
-                const groupSelect = document.getElementById('group');
-
+        const loginView = document.getElementById('loginView');
+        const mainView = document.getElementById('mainView');
+        const welcomeMsg = document.getElementById('welcomeMsg');
+        const groupSelect = document.getElementById('group');
         const ipInput = document.getElementById('ip');
         const submitBtn = document.getElementById('submitBtn');
         const logsContainer = document.getElementById('logsContainer');
         const logsContent = document.getElementById('logsContent');
 
-                // Check auth status on load
-                checkAuth();
+        checkAuth();
 
-                async function checkAuth() {
-                    try {
-                        const res = await fetch('/api/user/info');
-                        if (res.ok) {
-                            const user = await res.json();
-                            showMainView(user);
-                        } else {
-                            showLoginView();
-                        }
-                    } catch (err) {
-                        showLoginView();
-                    }
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/user/info');
+                if (res.ok) {
+                    const user = await res.json();
+                    showMainView(user);
+                } else {
+                    showLoginView();
                 }
+            } catch (err) {
+                showLoginView();
+            }
+        }
 
-                function showLoginView() {
-                    loginView.classList.remove('hidden');
-                    mainView.classList.add('hidden');
+        function showLoginView() {
+            loginView.classList.remove('hidden');
+            mainView.classList.add('hidden');
+        }
+
+        function showMainView(user) {
+            loginView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            welcomeMsg.textContent = `Logged in as ${user.username}`;
+
+            groupSelect.innerHTML = '<option value="" disabled selected>Select a group</option>';
+            user.groups.forEach(g => {
+                const option = document.createElement('option');
+                option.value = g;
+                option.textContent = g;
+                groupSelect.appendChild(option);
+            });
+            if (user.groups.length > 0) {
+                groupSelect.value = user.groups[0];
+            }
+
+            fetchIP();
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        async function handleLogout() {
+            await fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': getCookie('sgm_csrf') || ''
                 }
+            });
+            checkAuth();
+        }
 
-                function showMainView(user) {
-                    loginView.classList.add('hidden');
-                    mainView.classList.remove('hidden');
-                    welcomeMsg.textContent = `Logged in as ${user.username}`;
-
-                    // Populate groups
-                    groupSelect.innerHTML = '<option value="" disabled selected>Select a group</option>';
-                    user.groups.forEach(g => {
-                        const option = document.createElement('option');
-                        option.value = g;
-                        option.textContent = g;
-                        groupSelect.appendChild(option);
-                    });
-
-                    // Select first group by default if available
-                    if (user.groups.length > 0) {
-                        groupSelect.value = user.groups[0];
-                    }
-
-                    fetchIP();
-                }
-
-                function getCookie(name) {
-                    const value = `; ${document.cookie}`;
-                    const parts = value.split(`; ${name}=`);
-                    if (parts.length === 2) return parts.pop().split(';').shift();
-                }
-
-                async function handleLogin() {
-                    const username = usernameInput.value;
-                    const password = passwordInput.value;
-
-                    if (!username || !password) {
-                        loginError.textContent = "Please enter username and password";
-                        loginError.style.display = 'block';
-                        return;
-                    }
-
-                    try {
-                        const res = await fetch('/api/login', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': getCookie('sgm_csrf') || ''
-                            },
-                            body: JSON.stringify({ username, password })
-                        });
-
-                        if (res.ok) {
-                            checkAuth();
-                            loginError.style.display = 'none';
-                            passwordInput.value = ''; // Clear password
-                        } else {
-                            loginError.textContent = "Invalid credentials";
-                            loginError.style.display = 'block';
-                        }
-                    } catch (err) {
-                        loginError.textContent = "Login failed: " + err.message;
-                        loginError.style.display = 'block';
-                    }
-                }
-
-                async function handleLogout() {
-                    await fetch('/api/logout', {
-                        method: 'POST', // Changed to POST for CSRF protection
-                        headers: {
-                            'X-CSRF-Token': getCookie('sgm_csrf') || ''
-                        }
-                    });
-                    checkAuth();
-                }
-
-        // Fetch IP on load
         async function fetchIP() {
             try {
                 const res = await fetch('/api/ip');
                 const data = await res.json();
                 if (data.ip) {
                     ipInput.value = data.ip;
-                    
-                    // Display Geo Info if available
-                    // Remove existing info div if any
-                    const existingInfo = ipInput.parentNode.querySelector('.geo-info');
-                    if (existingInfo) existingInfo.remove();
 
+                    const geoInfoContainer = document.getElementById('geoInfoContainer');
                     if (data.city || data.region || data.country_name || data.org) {
                         const geoInfo = [data.city, data.region, data.country_name, data.org].filter(Boolean).join(', ');
-                        const infoDiv = document.createElement('div');
-                        infoDiv.className = 'geo-info';
-                        infoDiv.style.marginTop = '0.5rem';
-                        infoDiv.style.fontSize = '0.875rem';
-                        infoDiv.style.color = '#94a3b8';
-                        infoDiv.textContent = `Detected: ${geoInfo}`;
-                        ipInput.parentNode.appendChild(infoDiv);
+                        geoInfoContainer.textContent = `Detected: ${geoInfo}`;
+                        geoInfoContainer.style.display = 'block';
+                    } else {
+                        geoInfoContainer.style.display = 'none';
+                    }
+
+                    if (data.ip.includes(':')) {
+                        fetchIPFromDirectService();
                     }
                 } else {
                     ipInput.placeholder = "Failed to load IP";
@@ -293,6 +295,28 @@
             } catch (err) {
                 console.error(err);
                 ipInput.placeholder = "Failed to load IP";
+            }
+        }
+
+        async function fetchIPFromDirectService() {
+            const btn = document.querySelector('.refresh-btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<div class="loading" style="width:12px;height:12px;border-width:2px;border-color:#ffffff;border-top-color:transparent;"></div>';
+            btn.disabled = true;
+            try {
+                const res = await fetch('https://ip.19877891.xyz');
+                const data = await res.json();
+                if (data && data.ip) {
+                    ipInput.value = data.ip;
+                } else {
+                    alert("Failed to parse IP from direct service response");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error fetching IP from direct service");
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
             }
         }
 
@@ -347,15 +371,11 @@
 
                 if (data.success) {
                     logsContent.textContent += "\n\nUpdate completed successfully!";
+                } else if (res.status === 403) {
+                    logsContent.textContent += `\n\nError: ${data.message || "Permission denied"}`;
                 } else {
-                    // Check if it's a permission error
-                    if (res.status === 403) {
-                        logsContent.textContent += `\n\nError: ${data.message || "Permission denied"}`;
-                    } else {
-                        logsContent.textContent += "\n\nUpdate failed or had errors. Check logs above.";
-                    }
+                    logsContent.textContent += "\n\nUpdate failed or had errors. Check logs above.";
                 }
-
             } catch (err) {
                 logsContent.textContent += `\nError: ${err.message}`;
             } finally {

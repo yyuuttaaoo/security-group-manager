@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,13 +17,18 @@ import (
 )
 
 const (
-	csrfCookieName = "sgm_csrf"
-	csrfHeaderName = "X-CSRF-Token"
+	CSRFCookieName    = "sgm_csrf"
+	CSRFHeaderName    = "X-CSRF-Token"
+	SessionCookieName = "sgm_session"
+	SessionDuration   = 24 * time.Hour
+	sessionCookiePath = "/"
+	csrfCookiePath    = "/"
 )
 
 type User struct {
-	Username string   `json:"username"`
-	Groups   []string `json:"groups"`
+	UserID      string   `json:"user_id"`
+	DisplayName string   `json:"display_name"`
+	Groups      []string `json:"groups"`
 }
 
 type Authenticator struct {
@@ -33,26 +39,35 @@ func NewAuthenticator(cfg config.AuthConfig) *Authenticator {
 	return &Authenticator{Config: cfg}
 }
 
-// Simple cookie-based session
-const sessionCookieName = "sgm_session"
-
-func (a *Authenticator) Login(username, password string) (*User, error) {
+func (a *Authenticator) IssueSession(provider string, externalID string, displayName string) (*User, error) {
 	for _, u := range a.Config.Users {
-		if u.Username == username {
-			// Decode base64 password
-			decodedPwd, err := base64.StdEncoding.DecodeString(u.Password)
-			if err != nil {
-				return nil, fmt.Errorf("config error: invalid base64 password")
+		uid := userUID(u)
+		if uid == "" {
+			continue
+		}
+
+		match := false
+		switch provider {
+		case "alipay":
+			match = u.AlipayUserID != "" && u.AlipayUserID == externalID
+		case "baidu":
+			match = u.BaiduOpenID != "" && u.BaiduOpenID == externalID
+		case "dev":
+			match = uid == externalID
+		}
+
+		if match {
+			if displayName == "" {
+				displayName = uid
 			}
-			if string(decodedPwd) == password {
-				return &User{
-					Username: u.Username,
-					Groups:   u.Groups,
-				}, nil
-			}
+			return &User{
+				UserID:      uid,
+				DisplayName: displayName,
+				Groups:      u.Groups,
+			}, nil
 		}
 	}
-	return nil, fmt.Errorf("invalid credentials")
+	return nil, fmt.Errorf("user not found or unauthorized")
 }
 
 func (a *Authenticator) sign(data string) string {
@@ -76,7 +91,6 @@ func (a *Authenticator) verify(signedData string) (string, error) {
 		return "", fmt.Errorf("internal error signing data")
 	}
 
-	// Constant time comparison to prevent timing attacks
 	if !hmac.Equal([]byte(signature), []byte(expectedParts[1])) {
 		return "", fmt.Errorf("invalid signature")
 	}
@@ -92,19 +106,23 @@ func GenerateRandomString(n int) (string, error) {
 }
 
 func (a *Authenticator) SetCSRFCookie(w http.ResponseWriter) (string, error) {
+	return a.setCSRFCookie(w, time.Now().Add(SessionDuration))
+}
+
+func (a *Authenticator) setCSRFCookie(w http.ResponseWriter, expires time.Time) (string, error) {
 	token, err := GenerateRandomString(32)
 	if err != nil {
 		return "", err
 	}
 
-	// CSRF cookie should NOT be HttpOnly so JS can read it
 	http.SetCookie(w, &http.Cookie{
-		Name:     csrfCookieName,
+		Name:     CSRFCookieName,
 		Value:    token,
-		Path:     "/",
-		HttpOnly: false, // Important!
+		Path:     csrfCookiePath,
+		HttpOnly: false,
 		Secure:   a.Config.CookieSecure,
 		SameSite: http.SameSiteStrictMode,
+		Expires:  expires,
 	})
 	return token, nil
 }
@@ -116,15 +134,14 @@ func (a *Authenticator) CSRFMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Only check for state-changing methods
 		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete {
-			cookie, err := r.Cookie(csrfCookieName)
+			cookie, err := r.Cookie(CSRFCookieName)
 			if err != nil {
 				http.Error(w, "Missing CSRF cookie", http.StatusForbidden)
 				return
 			}
 
-			headerToken := r.Header.Get(csrfHeaderName)
+			headerToken := r.Header.Get(CSRFHeaderName)
 			if headerToken == "" {
 				http.Error(w, "Missing CSRF header", http.StatusForbidden)
 				return
@@ -141,56 +158,96 @@ func (a *Authenticator) CSRFMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (a *Authenticator) SetSession(w http.ResponseWriter, user *User) {
-	val := a.sign(user.Username)
+	expires := time.Now().Add(SessionDuration)
+	b, _ := json.Marshal(user)
+	val := a.sign(base64.URLEncoding.EncodeToString(b))
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     SessionCookieName,
 		Value:    val,
-		Path:     "/",
+		Path:     sessionCookiePath,
 		HttpOnly: true,
 		Secure:   a.Config.CookieSecure,
 		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(24 * time.Hour),
+		Expires:  expires,
 	})
 
-	// Set CSRF cookie on login
-	a.SetCSRFCookie(w)
+	a.setCSRFCookie(w, expires)
 }
 
 func (a *Authenticator) ClearSession(w http.ResponseWriter) {
+	clearCookie(w, SessionCookieName, sessionCookiePath, true, a.Config.CookieSecure)
+	clearCookie(w, CSRFCookieName, csrfCookiePath, false, a.Config.CookieSecure)
+}
+
+func clearCookie(w http.ResponseWriter, name string, path string, httpOnly bool, secure bool) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     name,
 		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
+		Path:     path,
+		HttpOnly: httpOnly,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 	})
 }
 
 func (a *Authenticator) GetUserFromRequest(r *http.Request) (*User, error) {
-	cookie, err := r.Cookie(sessionCookieName)
+	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
 		return nil, err
 	}
 
-	username, err := a.verify(cookie.Value)
+	signedVal, err := a.verify(cookie.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate username exists in config
+	b, err := base64.URLEncoding.DecodeString(signedVal)
+	if err != nil {
+		return a.getLegacySessionUser(signedVal)
+	}
+
+	var sessionUser User
+	if err := json.Unmarshal(b, &sessionUser); err != nil {
+		return nil, fmt.Errorf("invalid session format")
+	}
+
 	for _, u := range a.Config.Users {
-		if u.Username == username {
+		uid := userUID(u)
+		if uid == sessionUser.UserID {
+			displayName := sessionUser.DisplayName
+			if displayName == "" {
+				displayName = uid
+			}
 			return &User{
-				Username: u.Username,
-				Groups:   u.Groups,
+				UserID:      uid,
+				DisplayName: displayName,
+				Groups:      u.Groups,
 			}, nil
 		}
 	}
 	return nil, fmt.Errorf("invalid session")
 }
 
-// Middleware
+func (a *Authenticator) getLegacySessionUser(username string) (*User, error) {
+	for _, u := range a.Config.Users {
+		if u.LegacyUsername == username {
+			uid := userUID(u)
+			if uid == "" {
+				uid = username
+			}
+			return &User{
+				UserID:      uid,
+				DisplayName: uid,
+				Groups:      u.Groups,
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("invalid session encoding")
+}
+
 type contextKey string
 
 const UserContextKey contextKey = "user"
@@ -220,4 +277,11 @@ func (a *Authenticator) HasGroupAccess(user *User, group string) bool {
 		}
 	}
 	return false
+}
+
+func userUID(u config.UserConfig) string {
+	if u.UID != "" {
+		return u.UID
+	}
+	return u.LegacyUsername
 }

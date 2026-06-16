@@ -1,14 +1,14 @@
 log:
   output: "file"
   file_path: "server.log"
-  max_size: 10 # MB
+  max_size: 10
   max_backups: 3
-  max_age: 28 # days
+  max_age: 28
   compress: true
 auth:
   enabled: true
   session_secret: "CHANGE_ME_RANDOM_32_BYTES_OR_MORE"
-  cookie_secure: true # Set to true if using HTTPS (or behind HTTPS proxy)
+  cookie_secure: true
   users:
     - uid: "admin"
       alipay_userid: "YOUR_ALIPAY_USER_ID"
@@ -28,9 +28,9 @@ baidu:
   sign_key: "YOUR_BAIDU_SIGN_KEY"
   redirect_uri: "https://your-domain.example/api/oauth/baidu/callback"
 server:
-  address: "127.0.0.1" # Listen only on localhost (good for Caddy/Nginx)
+  address: "127.0.0.1"
   port: "8080"
-  tls: false # Set to true if you want direct HTTPS
+  tls: false
   cert_file: "server.crt"
   key_file: "server.key"
   dev_mode: false

@@ -27,6 +27,16 @@ go.work.sum
 # env file
 .env
 
+# Runtime/local recovery artifacts
+server.log
+cert/
+bin/
+/main
+
+# Vendored SDK dumps used only as local recovery material
+alipay-sdk-java-all/
+alipay-sdk-python-all/
+
 # Editor/IDE
 # .idea/
 # .vscode/
