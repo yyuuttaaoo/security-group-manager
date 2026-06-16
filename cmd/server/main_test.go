@@ -140,6 +140,19 @@ func TestAlipayCallbackRejectsTamperedState(t *testing.T) {
 	}
 }
 
+func TestDevLoginRejectsNonLoopbackRequests(t *testing.T) {
+	authenticator = auth.NewAuthenticator(config.AuthConfig{SessionSecret: "secret"})
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/dev/login", nil)
+	req.RemoteAddr = "203.0.113.10:12345"
+	handleDevLogin(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
 func cookiesByName(cookies []*http.Cookie) map[string]*http.Cookie {
 	out := make(map[string]*http.Cookie, len(cookies))
 	for _, cookie := range cookies {

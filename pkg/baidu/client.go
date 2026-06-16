@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const maxBaiduResponseLen = 5 * 1024 * 1024
@@ -25,7 +26,7 @@ func NewClient(appID, appKey, secretKey, redirectURI string) *Client {
 		AppKey:      appKey,
 		SecretKey:   secretKey,
 		RedirectURI: redirectURI,
-		HTTPClient:  http.DefaultClient,
+		HTTPClient:  &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -79,6 +80,9 @@ func (c *Client) GetOauthToken(code string) (*OauthTokenResponse, error) {
 		return nil, fmt.Errorf("http get failed: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("baidu token http status %d", resp.StatusCode)
+	}
 
 	var out OauthTokenResponse
 	if err := decodeLimitedJSON(resp.Body, &out); err != nil {
@@ -111,6 +115,9 @@ func (c *Client) GetUserInfo(accessToken string) (*UserInfoResponse, error) {
 		return nil, fmt.Errorf("http get failed: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("baidu user info http status %d", resp.StatusCode)
+	}
 
 	var out UserInfoResponse
 	if err := decodeLimitedJSON(resp.Body, &out); err != nil {

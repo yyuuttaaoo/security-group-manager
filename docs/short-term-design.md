@@ -1,4 +1,6 @@
-# Short-Term Design: Basic Authentication & Authorization
+# Historical Short-Term Design: Basic Authentication & Authorization
+
+This document describes the original interim password-based plan. The current implementation uses Alipay/Baidu OAuth identity mapping instead.
 
 ## Goal
 Implement a simple, quick-to-deploy authentication and authorization system using username/password stored in the configuration file. This is an interim solution to secure the application immediately.
@@ -10,14 +12,11 @@ Add a `users` section to define access control.
 ```yaml
 auth:
   enabled: true
-  session_secret: "random-string-for-cookie-signing" # Generate a random string
+  session_secret: "CHANGE_ME_RANDOM_32_BYTES_OR_MORE"
   users:
-    - username: "yutao"
-      password: "MTIz" # Base64 encoded "123"
-      groups: ["shenjin", "iphone17pro"]
-    - username: "admin"
-      password: "YWRtaW4=" # Base64 encoded "admin"
-      groups: ["shenjin", "iphone17pro", "default"] # Explicitly list all groups, no wildcards
+    - username: "example-user"
+      password: "BASE64_ENCODED_PLACEHOLDER"
+      groups: ["example-group"]
 ```
 
 ### 2. Backend Changes (`cmd/server/main.go` & `pkg/auth`)

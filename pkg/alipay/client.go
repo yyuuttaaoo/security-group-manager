@@ -25,13 +25,12 @@ const (
 )
 
 type Client struct {
-	AppID              string
-	PrivateKey         *rsa.PrivateKey
-	AlipayPublicKey    *rsa.PublicKey
-	AppCertSN          string
-	AlipayRootCertSN   string
-	AlipayPublicCertSN string
-	HTTPClient         *http.Client
+	AppID            string
+	PrivateKey       *rsa.PrivateKey
+	AlipayPublicKey  *rsa.PublicKey
+	AppCertSN        string
+	AlipayRootCertSN string
+	HTTPClient       *http.Client
 }
 
 func NewClient(appID, privateKeyPath, appCertPath, alipayPublicCertPath, alipayRootCertPath string) (*Client, error) {
@@ -69,13 +68,12 @@ func NewClient(appID, privateKeyPath, appCertPath, alipayPublicCertPath, alipayR
 	}
 
 	return &Client{
-		AppID:              appID,
-		PrivateKey:         privKey,
-		AlipayPublicKey:    aliPubKey,
-		AppCertSN:          GetCertSN(appCert),
-		AlipayRootCertSN:   rootSN,
-		AlipayPublicCertSN: GetCertSN(aliCert),
-		HTTPClient:         http.DefaultClient,
+		AppID:            appID,
+		PrivateKey:       privKey,
+		AlipayPublicKey:  aliPubKey,
+		AppCertSN:        GetCertSN(appCert),
+		AlipayRootCertSN: rootSN,
+		HTTPClient:       &http.Client{Timeout: 10 * time.Second},
 	}, nil
 }
 
@@ -179,7 +177,14 @@ func (c *Client) DoRequest(method string, systemParams map[string]string, bizCon
 	if err != nil {
 		return fmt.Errorf("read response failed: %w", err)
 	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("alipay http status %d", resp.StatusCode)
+	}
 
+	return c.decodeResponse(bodyBytes, responseNode, out)
+}
+
+func (c *Client) decodeResponse(bodyBytes []byte, responseNode string, out interface{}) error {
 	var root map[string]json.RawMessage
 	if err := json.Unmarshal(bodyBytes, &root); err != nil {
 		return fmt.Errorf("unmarshal root failed: %w", err)
@@ -193,13 +198,16 @@ func (c *Client) DoRequest(method string, systemParams map[string]string, bizCon
 		return fmt.Errorf("response node %s not found", responseNode)
 	}
 
-	if signNode, ok := root["sign"]; ok {
-		var signStr string
-		if err := json.Unmarshal(signNode, &signStr); err == nil && signStr != "" {
-			if err := c.Verify(string(nodeBytes), signStr); err != nil {
-				return fmt.Errorf("verify failed: %w", err)
-			}
-		}
+	signNode, ok := root["sign"]
+	if !ok {
+		return fmt.Errorf("alipay response signature missing")
+	}
+	var signStr string
+	if err := json.Unmarshal(signNode, &signStr); err != nil || signStr == "" {
+		return fmt.Errorf("alipay response signature missing")
+	}
+	if err := c.Verify(string(nodeBytes), signStr); err != nil {
+		return fmt.Errorf("verify failed: %w", err)
 	}
 
 	if err := json.Unmarshal(nodeBytes, out); err != nil {

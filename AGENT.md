@@ -76,7 +76,6 @@ baidu:
   app_id: "YOUR_BAIDU_APP_ID"
   app_key: "YOUR_BAIDU_APP_KEY"
   secret_key: "YOUR_BAIDU_SECRET_KEY"
-  sign_key: "YOUR_BAIDU_SIGN_KEY"
   redirect_uri: "https://your-domain.example/api/oauth/baidu/callback"
 
 server:

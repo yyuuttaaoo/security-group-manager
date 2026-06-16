@@ -52,7 +52,8 @@ Copy the binary, config, and web assets to the server.
 # -C enables SSH compression (significantly faster on slow links)
 scp -C bin/server-linux root@<YOUR_SERVER_IP>:/tmp/server
 scp -C web/index.html root@<YOUR_SERVER_IP>:/tmp/index.html
-# Only needed on first deploy or if config changed:
+# Only needed on first deploy or if config changed. Create this private file from
+# config.yaml.template and fill real secrets locally. Do not commit it.
 scp -C config.yaml root@<YOUR_SERVER_IP>:/tmp/config.yaml
 
 # Move into place and fix permissions in one SSH session:

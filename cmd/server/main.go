@@ -404,6 +404,10 @@ func handleGetIP(w http.ResponseWriter, r *http.Request) {
 
 func handleDevLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
+		if !isLoopbackRequest(r) {
+			http.Error(w, "Dev login is only available from loopback", http.StatusForbidden)
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `
 <html>
@@ -420,6 +424,10 @@ func handleDevLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopbackRequest(r) {
+		http.Error(w, "Dev login is only available from loopback", http.StatusForbidden)
 		return
 	}
 
@@ -442,6 +450,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 			os.Exit(1)
 		}
+	}
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "Invalid config: %v\n", err)
+		os.Exit(1)
 	}
 
 	logger.Setup(cfg.Log)
@@ -542,6 +554,15 @@ func clientIP(r *http.Request) string {
 
 func isPrivateOrLoopback(ip net.IP) bool {
 	return ip.IsLoopback() || ip.IsPrivate()
+}
+
+func isLoopbackRequest(r *http.Request) bool {
+	host := r.RemoteAddr
+	if parsedHost, _, err := net.SplitHostPort(host); err == nil {
+		host = parsedHost
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	return ip != nil && ip.IsLoopback()
 }
 
 func writeOAuthRetryPage(w http.ResponseWriter, status int, title string, message string, loginPath string) {

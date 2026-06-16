@@ -36,6 +36,20 @@ func TestSignAndVerify(t *testing.T) {
 	}
 }
 
+func TestDecodeResponseRequiresSignature(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("GenerateKey failed: %v", err)
+	}
+
+	client := &Client{AlipayPublicKey: &key.PublicKey}
+	var out OauthTokenResponse
+	err = client.decodeResponse([]byte(`{"alipay_system_oauth_token_response":{"access_token":"token","user_id":"uid"}}`), "alipay_system_oauth_token_response", &out)
+	if err == nil || !strings.Contains(err.Error(), "signature missing") {
+		t.Fatalf("decodeResponse err = %v, want signature missing", err)
+	}
+}
+
 func TestParseCertFileAndRootCertSN(t *testing.T) {
 	certPEM := testCertificatePEM(t)
 	path := filepath.Join(t.TempDir(), "cert.pem")
