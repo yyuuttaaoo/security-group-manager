@@ -1,8 +1,9 @@
 name: Request Copilot Review
 
 on:
+  workflow_dispatch:  # DEBUG: allow manual trigger from Actions tab
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, ready_for_review, synchronize]  # DEBUG: synchronize = new push to PR
 
 jobs:
   request-copilot-review:
