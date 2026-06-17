@@ -35,7 +35,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
-          # Use JSON body to avoid shell-parsing issues with [bot] in reviewer name
-          gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+          # Trigger Copilot review by posting @copilot review as a PR comment.
+          # The requested_reviewers API silently ignores github-copilot[bot];
+          # the @copilot mention in a comment is the supported programmatic trigger.
+          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
             -X POST \
-            --input - <<< '{"reviewers":["github-copilot[bot]"]}'
+            --input - <<< '{"body":"@copilot review"}'
