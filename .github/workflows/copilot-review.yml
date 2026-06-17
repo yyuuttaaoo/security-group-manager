@@ -17,7 +17,7 @@ jobs:
           TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::error::COPILOT_USER_PAT secret is not set. Add a fine-grained PAT with 'Pull requests: Read and write' permission from a Copilot-licensed user."
+            echo "::error::COPILOT_USER_PAT secret is not set. Add a classic PAT with 'repo' scope (or a fine-grained PAT with 'Pull requests: Read and write') from a Copilot-licensed user."
             exit 1
           fi
           # Always perform a deterministic check: fail unless HTTP 200
