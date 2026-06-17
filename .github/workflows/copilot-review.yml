@@ -34,9 +34,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
-          # Use the reviewer username 'Copilot' (bot user ID 175728472) which
-          # is what the GitHub UI submits to /pull/{n}/review-requests.
-          # This produces proper inline review comments, unlike @copilot comment trigger.
-          gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
             -X POST \
-            --input - <<< '{"reviewers":["Copilot"]}'
+            --input - <<< '{"body":"@copilot Please review the code and make inline comments."}'
