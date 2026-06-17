@@ -17,7 +17,7 @@ jobs:
           TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::error::COPILOT_USER_PAT secret is not set. Add a classic PAT with 'repo' scope (or a fine-grained PAT with 'Pull requests: Read and write') from a Copilot-licensed user."
+            echo "::error::COPILOT_USER_PAT secret is not set. Add a classic PAT with 'repo' and 'read:org' scopes from a Copilot-licensed user."
             exit 1
           fi
           # Validate that the token can access this repo/PR (not just that it is syntactically valid)
@@ -35,6 +35,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
+          set -euo pipefail
+          # Wait briefly so any branch ruleset has time to add Copilot first
+          sleep 10
+          # Check pending review requests (login: "Copilot") — REST API, no read:org needed
+          requested=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+            --jq '[.users[].login] | map(ascii_downcase) | contains(["copilot"])')
+
+          # Check already-completed reviews (author login: "copilot-pull-request-reviewer")
+          reviewed=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews?per_page=100 \
+            --jq '[.[].user.login] | map(ascii_downcase) | contains(["copilot-pull-request-reviewer"])')
+
+          if [ "$requested" = "true" ] || [ "$reviewed" = "true" ]; then
+            echo "Copilot is already requested or has already reviewed — skipping to avoid duplicate."
+            exit 0
+          fi
+
           gh pr edit ${{ github.event.pull_request.number }} \
             --add-reviewer @copilot \
             --repo ${{ github.repository }}
