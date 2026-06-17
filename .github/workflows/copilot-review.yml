@@ -43,8 +43,8 @@ jobs:
             --jq '[.users[].login] | map(ascii_downcase) | contains(["copilot"])')
 
           # Check already-completed reviews (author login: "copilot-pull-request-reviewer")
-          reviewed=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
-            --jq '[.[].user.login] | contains(["copilot-pull-request-reviewer"])')
+          reviewed=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews?per_page=100 \
+            --jq '[.[].user.login] | map(ascii_downcase) | contains(["copilot-pull-request-reviewer"])')
 
           if [ "$requested" = "true" ] || [ "$reviewed" = "true" ]; then
             echo "Copilot is already requested or has already reviewed — skipping to avoid duplicate."
