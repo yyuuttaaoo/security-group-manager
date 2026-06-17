@@ -34,6 +34,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
-          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
-            -X POST \
-            --input - <<< '{"body":"@copilot review this pull request and leave inline comments on specific lines. Do not make any commits or code changes."}'
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --add-reviewer @copilot \
+            --repo ${{ github.repository }}
