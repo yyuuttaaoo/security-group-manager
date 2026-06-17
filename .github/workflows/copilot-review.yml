@@ -35,9 +35,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
+          set -euo pipefail
           # Wait briefly so any branch ruleset has time to add Copilot first
           sleep 10
-
           # Check pending review requests (login: "Copilot") — REST API, no read:org needed
           requested=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
             --jq '[.users[].login] | map(ascii_downcase) | contains(["copilot"])')
