@@ -10,10 +10,31 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
+      - name: Validate COPILOT_USER_PAT secret
+        env:
+          TOKEN: ${{ secrets.COPILOT_USER_PAT }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::COPILOT_USER_PAT secret is not set. Add a classic PAT (repo scope) from a Copilot-licensed user."
+            exit 1
+          fi
+          # Verify the token is valid before proceeding
+          if ! gh auth status 2>/dev/null; then
+            response=$(curl -sf -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer $TOKEN" \
+              https://api.github.com/user) || true
+            if [ "$response" = "401" ]; then
+              echo "::error::COPILOT_USER_PAT is invalid or expired (HTTP 401). Please regenerate the PAT and update the secret."
+              exit 1
+            fi
+          fi
+          echo "Token validated (HTTP $response)"
+
       - name: Request Copilot review
         env:
           GH_TOKEN: ${{ secrets.COPILOT_USER_PAT }}
         run: |
+          # Use JSON body to avoid shell-parsing issues with [bot] in reviewer name
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
             -X POST \
-            -f 'reviewers[]=github-copilot[bot]'
+            --input - <<< '{"reviewers":["github-copilot[bot]"]}'
