@@ -38,17 +38,13 @@ jobs:
           # Wait briefly so any branch ruleset has time to add Copilot first
           sleep 10
 
-          # Check pending review requests (login: "Copilot")
-          requested=$(gh pr view ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} \
-            --json reviewRequests \
-            --jq '[.reviewRequests[].login] | map(ascii_downcase) | contains(["copilot"])')
+          # Check pending review requests (login: "Copilot") — REST API, no read:org needed
+          requested=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+            --jq '[.users[].login] | map(ascii_downcase) | contains(["copilot"])')
 
           # Check already-completed reviews (author login: "copilot-pull-request-reviewer")
-          reviewed=$(gh pr view ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} \
-            --json reviews \
-            --jq '[.reviews[].author.login] | contains(["copilot-pull-request-reviewer"])')
+          reviewed=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+            --jq '[.[].user.login] | contains(["copilot-pull-request-reviewer"])')
 
           if [ "$requested" = "true" ] || [ "$reviewed" = "true" ]; then
             echo "Copilot is already requested or has already reviewed — skipping to avoid duplicate."
