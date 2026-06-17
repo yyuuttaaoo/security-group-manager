@@ -36,4 +36,4 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
             -X POST \
-            --input - <<< '{"body":"@copilot Please review the code and make inline comments."}'
+            --input - <<< '{"body":"@copilot review this pull request and leave inline comments on specific lines. Do not make any commits or code changes."}'
